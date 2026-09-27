@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// 1. USERS & ROLES
+// ==========================================
+
+enum Role {
+  USER
+  CREATOR
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // For OTP/Email login fallback
+  role          Role      @default(USER)
+
+  // Relations
+  designs        UserDesign[]
+  orders         Order[]
+  wardrobe       WardrobeItem[]
+  creatorProfiles CreatorProfile[]
+
+  accounts Account[]
+  sessions Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+// ==========================================
+// 2. CREATOR MARKETPLACE
+// ==========================================
+
+model CreatorProfile {
+  id     String @id @default(cuid())
+  userId String 
+  bio            String
+  socialLink String?
+  createdAt DateTime @default(now())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  storeName      String  @unique
+  commissionRate Float   @default(10.0) // Percentage
+  totalEarnings  Float   @default(0.0)
+
+  isApproved Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([storeName])
+  @@index([userId])
+}
+
+// ==========================================
+// 3. INVENTORY (The Physical Blanks)
+// ==========================================
+
+model BaseProduct {
+  id          String @id @default(cuid())
+  name        String // e.g., "Heavyweight Oversized Tee"
+  description String
+  basePrice   Float // Base cost before customization
+  category    String // e.g., "Oversized T-Shirts"
+
+  // JSON array containing available colors and sizes
+  options Json
+
+  designs UserDesign[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+// ==========================================
+// 4. USER DESIGNS (The Core USP)
+// ==========================================
+
+model UserDesign {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  baseProductId String
+  baseProduct   BaseProduct @relation(fields: [baseProductId], references: [id])
+
+  title    String? // e.g., "My Cyberpunk Tee"
+  aiPrompt String? // The prompt used to generate this
+
+  // The final flattened images for the printer
+  frontPrintUrl String?
+  backPrintUrl  String?
+
+  // Complex JSON holding exact coordinates, rotation, scaling of elements
+  canvasState Json
+
+  isPublished Boolean @default(false) // If true, visible on Creator Marketplace
+
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isPublished])
+}
+
+// ==========================================
+// 5. ORDERS & COMMERCE
+// ==========================================
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PRINTING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  totalAmount       Float
+  status            OrderStatus @default(PENDING)
+  razorpayOrderId   String?     @unique
+  razorpayPaymentId String?
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  designId String
+  design   UserDesign @relation(fields: [designId], references: [id])
+
+  quantity        Int
+  size            String
+  color           String
+  priceAtPurchase Float
+
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// 6. WARDROBE AI (User's Digital Closet)
+// ==========================================
+
+model WardrobeItem {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  imageUrl      String
+  category      String // AI extracted (e.g., "Sneakers")
+  dominantColor String? // AI extracted
+  tags          String[] // AI generated tags for matching
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ==========================================
+// 7. NEXTAUTH REQUIRED MODELS
+// ==========================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Float
+  category    String
+  imageColor  String
+  createdAt   DateTime @default(now())
+}
