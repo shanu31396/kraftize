@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, User, Search, Wand2 } from "lucide-react";
+import { ShoppingCart, User, Search, Wand2, Menu, X } from "lucide-react";
 import AuthModal from "@/components/auth/AuthModal";
 import UserSidebar from "@/components/layouts/UserSidebar";
 import { useSession, signOut } from "next-auth/react";
@@ -15,6 +15,8 @@ export default function Navbar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const { data: session, status } = useSession();
   const totalItems = useCartStore((state) => state.getTotalItems());
   
@@ -50,7 +52,6 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-4 text-sm font-medium group h-full">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -59,15 +60,11 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  // 1. THE CONTAINER: Stretches to full height, handles margins, but NEVER scales.
-                  // This mathematically locks the bottom line in place so it can never slip.
                   className={`
                     relative z-10 flex items-center h-full px-2 origin-center transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)]
                     hover:mx-3 hover:z-20
                   `}
                 >
-                  
-                  {/* 2. THE TEXT: All scaling and hover effects happen securely in here */}
                   <span
                     className={`
                       relative flex items-center transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] origin-center
@@ -91,7 +88,6 @@ export default function Navbar() {
                     )}
                   </span>
 
-                  {/* 3. THE SHARP LINE: Locked exactly on the border curve, no ambient glow, no sliding. */}
                   {isActive && (
                     <span 
                       className="absolute -left-2 -right-2 bottom-[-8px] h-[2px] bg-gradient-to-r from-transparent via-pink-600 dark:via-white to-transparent animate-in fade-in duration-300"
@@ -102,8 +98,8 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Icons Section */}
-          <div className="flex items-center gap-4 text-pink-400 dark:text-zinc-400">
+          {/* Icons Section & Mobile Hamburger */}
+          <div className="flex items-center gap-3 sm:gap-4 text-pink-400 dark:text-zinc-400">
             <button className="hover:text-pink-800 dark:hover:text-white transition-colors">
               <Search className="h-5 w-5" />
             </button>
@@ -135,8 +131,40 @@ export default function Navbar() {
                 </span>
               )}
             </button>
+
+            {/* Mobile Hamburger Menu Toggle Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden hover:text-pink-800 dark:hover:text-white transition-colors p-1"
+              aria-label="Toggle Mobile Menu"
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Navigation Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden mt-3 border-t border-pink-200/60 dark:border-zinc-800/80 px-4 pt-3 pb-4 space-y-2 bg-pink-50/95 dark:bg-zinc-950/95 backdrop-blur-md rounded-b-2xl">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-base font-medium transition-colors ${
+                    isActive
+                      ? "bg-pink-200/50 dark:bg-zinc-800 text-pink-700 dark:text-white font-bold"
+                      : "text-pink-950/80 dark:text-zinc-300 hover:bg-pink-100/50 dark:hover:bg-zinc-900 hover:text-pink-700 dark:hover:text-white"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </header>
 
       {/* The UI Components */}
@@ -151,7 +179,6 @@ export default function Navbar() {
         onClose={() => setIsAuthOpen(false)}
       />
 
-      {/* Cart Sidebar */}
       <CartSidebar
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
